@@ -1,0 +1,14 @@
+
+[folders]
+csv_data_path="E:/MDR source data/WHO/data"
+json_data_path="E:/MDR/MDR source files/anzctr2"
+log_folder_path="E:/MDR/MDR Logs"
+
+[database]
+db_host="localhost"
+db_user="postgres"
+db_password="WinterIsComing!"
+db_port="5432"
+db_name="anz"
+
+
