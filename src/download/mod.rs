@@ -10,7 +10,7 @@ use crate::{AppError, DownloadResult};
 use data_access::{update_who_study_mon, add_new_single_file_record, 
     add_contents_record, store_who_summary};
 use file_models::WHOLine;
-use super::setup::config_reader::fetch_db_name;
+use super::setup::config_reader::fetch_src_db_name;
 use std::fs;
 use std::io::BufReader;
 use std::fs::File;
@@ -73,7 +73,7 @@ pub async fn process_files(file_path: &PathBuf, json_path: &PathBuf, dl_id:i32, 
         store_who_summary(rec_summ, pool).await?;             // add or update summary database record
 
         let mut full_path = PathBuf::from ("");
-        let db_name = fetch_db_name()?;
+        let db_name = fetch_src_db_name()?;
 
         if source_id != 100120  && source_id != 100126 {           // file production not necessary for these sources
   

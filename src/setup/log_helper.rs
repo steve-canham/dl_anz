@@ -21,15 +21,15 @@ use log4rs::{
 };
 
 
-pub fn setup_log (data_folder: &PathBuf, dl_type: i32) -> Result<log4rs::Handle, AppError> {
-    let log_file_path = get_log_file_path(data_folder, dl_type);
+pub fn setup_log (data_folder: &PathBuf) -> Result<log4rs::Handle, AppError> {
+    let log_file_path = get_log_file_path(data_folder);
     config_log (&log_file_path)
 }
 
-fn get_log_file_path(data_folder: &PathBuf, dl_type: i32) -> PathBuf {
+fn get_log_file_path(data_folder: &PathBuf) -> PathBuf {
     
     let datetime_string = Local::now().format("%m-%d %H%M%S").to_string();
-    let log_file_name = format!("WHO DL ({}) {} ", dl_type, datetime_string);
+    let log_file_name = format!("ANZCTR DL {} ", datetime_string);
     [data_folder, &PathBuf::from(&log_file_name)].iter().collect()
     
 }
@@ -79,7 +79,6 @@ pub fn log_startup_params (ip : &InitParams) {
     info!("");
     info!("************************************");
     info!("");
-    info!("download type: {}", ip.dl_type.to_string());
     info!("csv data path: {:?}", ip.csv_data_path);
     info!("json data parth: {:?}", ip.json_data_path);
     info!("log folder path: {:?}", ip.log_folder_path);

@@ -47,13 +47,19 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
     let params = setup::get_params(cli_pars, &config_string)?;
     //let flags = params.flags;
     setup::establish_log(&params)?;
-    let pool = setup::get_db_pool().await?;
+    let mon_pool = setup::get_mon_db_pool().await?;  // pool for the monitoring db
+    let src_pool = setup::get_src_db_pool().await?;  // pool for the source specific db
 
-    // issue a download command here...
-    // download type is constant - reading data from a set of csv files
-    let dl_id = get_next_download_id(&pool).await?;
-    let res = download::process_files(&params.csv_data_path, &params.json_data_path, dl_id, &pool).await?;
-    update_dl_event_record (dl_id, 1, res, &pool).await?;
+    // Download type is constant - reading data from a set of csv files.
+    // First recreate the sd scghema tables, get Id of this download,
+    // then import the data into the sd tables
+    // before updating the download record.
+
+    setup::create_tables::create_tables(&src_pool).await?;
+
+    let dl_id = get_next_download_id(&mon_pool).await?;
+    let res = download::process_files(&params.csv_data_path, &params.json_data_path, dl_id, &src_pool).await?;
+    update_dl_event_record (dl_id, 1, res, &mon_pool).await?;
     Ok(())  
 }
 

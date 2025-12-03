@@ -15,6 +15,7 @@ The module also provides a database connection pool on demand.
 pub mod cli_reader;
 pub mod config_reader;
 pub mod log_helper;
+pub mod create_tables;
 
 use std::fs;
 use std::sync::OnceLock;
@@ -28,11 +29,11 @@ use cli_reader::CliPars;
 use std::ffi::OsStr;
 
 pub struct InitParams {
-    pub dl_type: i32,
     pub csv_data_path: PathBuf,
     pub json_data_path: PathBuf,
     pub log_folder_path: PathBuf,
-    pub doing_agg_only: bool,
+    pub importing: bool,
+    pub transforming: bool,
 }
 
 pub static LOG_RUNNING: OnceLock<bool> = OnceLock::new();
@@ -40,45 +41,27 @@ pub static LOG_RUNNING: OnceLock<bool> = OnceLock::new();
 pub fn get_params(cli_pars: CliPars, config_string: &String) -> Result<InitParams, AppError> {
 
     let config_file: Config = config_reader::populate_config_vars(&config_string)?; 
-    let folder_pars = config_file.folders;  // guaranteed to exist
-    let empty_pb = PathBuf::from("");
-       
-    if cli_pars.doing_agg_only {
+    let folder_pars = config_file.folders;  
+    let csv_data_path = folder_pars.csv_data_path;
+    let json_data_path = folder_pars.json_data_path; 
 
-        Ok(InitParams {
-            dl_type: 0,
-            csv_data_path: empty_pb.clone(),
-            json_data_path: empty_pb.clone(),
-            log_folder_path: empty_pb.clone(),
-            doing_agg_only: cli_pars.doing_agg_only,
-
-        })
-
+    if !folder_exists(&json_data_path) {
+        fs::create_dir_all(&json_data_path)?;
     }
-    else {
 
-        let dl_type = cli_pars.dl_type;
-        let csv_data_path = folder_pars.csv_data_path;
-
-        let json_data_path = folder_pars.json_data_path;  // already checked as present
-        if !folder_exists(&json_data_path) {
-            fs::create_dir_all(&json_data_path)?;
-        }
-
-        let log_folder_path = folder_pars.log_folder_path;  // already checked as present
-        if !folder_exists(&log_folder_path) {
-            fs::create_dir_all(&log_folder_path)?;
-        }
-        
-        Ok(InitParams {
-            dl_type,
-            csv_data_path: csv_data_path,
-            json_data_path: json_data_path,
-            log_folder_path: log_folder_path,
-            doing_agg_only: cli_pars.doing_agg_only,
-
-        })
+    let log_folder_path = folder_pars.log_folder_path;  
+    if !folder_exists(&log_folder_path) {
+        fs::create_dir_all(&log_folder_path)?;
     }
+    
+    Ok(InitParams {
+        csv_data_path: csv_data_path,
+        json_data_path: json_data_path,
+        log_folder_path: log_folder_path,
+        importing: cli_pars.importing,
+        transforming: cli_pars.transforming,
+    })
+
 }
 
 
@@ -92,7 +75,7 @@ fn folder_exists(folder_name: &PathBuf) -> bool {
 }
 
 
-pub async fn get_db_pool() -> Result<PgPool, AppError> {  
+pub async fn get_mon_db_pool() -> Result<PgPool, AppError> {  
 
     // Establish DB name and thence the connection string
     // (done as two separate steps to allow for future development).
@@ -100,7 +83,33 @@ pub async fn get_db_pool() -> Result<PgPool, AppError> {
     // the time threshold for warnings. Set up a DB pool option and 
     // connect using the connection options object.
 
-    let db_name = match config_reader::fetch_db_name() {
+    let db_name = match config_reader::fetch_mon_db_name() {
+        Ok(n) => n,
+        Err(e) => return Err(e),
+    };
+
+    let db_conn_string = config_reader::fetch_db_conn_string(&db_name)?;  
+   
+    let mut opts: PgConnectOptions = db_conn_string.parse()
+                    .map_err(|e| AppError::DBPoolError("Problem with parsing conection string".to_string(), e))?;
+    opts = opts.log_slow_statements(log::LevelFilter::Warn, Duration::from_secs(3));
+
+    PgPoolOptions::new()
+        .max_connections(5) 
+        .connect_with(opts).await
+        .map_err(|e| AppError::DBPoolError(format!("Problem with connecting to database {} and obtaining Pool", db_name), e))
+}
+
+
+pub async fn get_src_db_pool() -> Result<PgPool, AppError> {  
+
+    // Establish DB name and thence the connection string
+    // (done as two separate steps to allow for future development).
+    // Use the string to set up a connection options object and change 
+    // the time threshold for warnings. Set up a DB pool option and 
+    // connect using the connection options object.
+
+    let db_name = match config_reader::fetch_src_db_name() {
         Ok(n) => n,
         Err(e) => return Err(e),
     };
@@ -122,7 +131,7 @@ pub async fn get_db_pool() -> Result<PgPool, AppError> {
 pub fn establish_log(params: &InitParams) -> Result<(), AppError> {
 
     if !log_set_up() {  // can be called more than once in context of integration tests
-        log_helper::setup_log(&params.log_folder_path, params.dl_type)?;
+        log_helper::setup_log(&params.log_folder_path)?;
         LOG_RUNNING.set(true).unwrap(); // should always work
         log_helper::log_startup_params(&params);
     }
@@ -220,7 +229,6 @@ db_name="mon"
 
         let res = get_params(cli_pars, &config_string).unwrap();
         
-        assert_eq!(res.dl_type, 501);
         assert_eq!(res.csv_data_path, PathBuf::from("E:/MDR source data/WHO/data"));
         assert_eq!(res.json_data_path, PathBuf::from("E:/MDR source files"));
         assert_eq!(res.log_folder_path, PathBuf::from("E:/MDR/MDR Logs"));
@@ -257,7 +265,6 @@ db_name="mon"
 
         let res = get_params(cli_pars, &config_string).unwrap();
 
-        assert_eq!(res.dl_type, 503);
         assert_eq!(res.csv_data_path, PathBuf::from("E:/MDR source data/WHO/data"));
         assert_eq!(res.json_data_path, PathBuf::from("E:/MDR source files"));
         assert_eq!(res.log_folder_path, PathBuf::from("E:/MDR/MDR Logs"));
