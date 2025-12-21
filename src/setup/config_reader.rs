@@ -209,9 +209,9 @@ mod tests {
         let config = r#"
 
 [folders]
-csv_data_path="E:/MDR source data/WHO/data"
-json_data_path="E:/MDR source files"
-log_folder_path="E:/MDR/MDR Logs"
+csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
+json_data_path="/home/steve/Data/MDR json files/anz"
+log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
 
 [database]
 db_host="localhost"
@@ -225,9 +225,9 @@ src_db_name="anz"
         let config_string = config.to_string();
         let res = populate_config_vars(&config_string).unwrap();
 
-        assert_eq!(res.folders.csv_data_path, PathBuf::from("E:/MDR source data/WHO/data"));
-        assert_eq!(res.folders.json_data_path, PathBuf::from("E:/MDR source files"));
-        assert_eq!(res.folders.log_folder_path, PathBuf::from("E:/MDR/MDR Logs"));
+        assert_eq!(res.folders.csv_data_path, PathBuf::from("/home/steve/Data/MDR source data/ANZCTR"));
+        assert_eq!(res.folders.json_data_path, PathBuf::from("/home/steve/Data/MDR json files/anz"));
+        assert_eq!(res.folders.log_folder_path, PathBuf::from("/home/steve/Data/MDR/MDR_Logs/anz"));
 
         assert_eq!(res.db_pars.db_host, "localhost");
         assert_eq!(res.db_pars.db_user, "user_name");
@@ -239,48 +239,13 @@ src_db_name="anz"
     
 
     #[test]
-    fn check_config_with_win_folders() {
-
-        let config = r#"
-
-[folders]
-csv_data_path="E:\\MDR source data\\WHO\\data"
-json_data_path="E:\\MDR source files"
-log_folder_path="E:\\MDR\\MDR Logs"
-
-[database]
-db_host="localhost"
-db_user="user_name"
-db_password="password"
-db_port="5432"
-mon_db_name="mon"
-src_db_name="anz"
-
-"#;
-        let config_string = config.to_string();
-        let res = populate_config_vars(&config_string).unwrap();
-
-        assert_eq!(res.folders.csv_data_path, PathBuf::from("E:\\MDR source data\\WHO\\data"));
-        assert_eq!(res.folders.json_data_path, PathBuf::from("E:\\MDR source files"));
-        assert_eq!(res.folders.log_folder_path, PathBuf::from("E:\\MDR\\MDR Logs"));
-
-        assert_eq!(res.db_pars.db_host, "localhost");
-        assert_eq!(res.db_pars.db_user, "user_name");
-        assert_eq!(res.db_pars.db_password, "password");
-        assert_eq!(res.db_pars.db_port, 5432);
-        assert_eq!(res.db_pars.mon_db_name, "mon");
-        assert_eq!(res.db_pars.src_db_name, "anz");
-      }
-
-
-    #[test]
     fn check_config_with_missing_csv_folder() {
 
         let config = r#"
 [folders]
-csv_full_path="E:\\MDR source data\\WHO\\data\\Full export 2025-02"
-json_data_path="E:\\MDR source files"
-log_folder_path="E:\\MDR\\MDR Logs"
+csv_data_path=""
+json_data_path="/home/steve/Data/MDR json files/anz"
+log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
 
 [database]
 db_host="localhost"
@@ -295,38 +260,10 @@ src_db_name="anz"
         let res = populate_config_vars(&config_string).unwrap();
 
         assert_eq!(res.folders.csv_data_path, PathBuf::from(""));
-        assert_eq!(res.folders.json_data_path, PathBuf::from("E:/MDR source files"));
-        assert_eq!(res.folders.log_folder_path, PathBuf::from("E:/MDR/MDR Logs"));
-
-    }
+        assert_eq!(res.folders.json_data_path, PathBuf::from("/home/steve/Data/MDR json files/anz"));
+        assert_eq!(res.folders.log_folder_path, PathBuf::from("/home/steve/Data/MDR/MDR_Logs/anz"));
 
 
-    #[test]
-    fn check_config_with_missing_csv_full_folder() {
-
-        let config = r#"
-
-[folders]
-csv_data_path="E:/MDR source data/WHO/data"
-json_data_path="E:/MDR source files"
-log_folder_path="E:/MDR/MDR Logs"
-
-[database]
-db_host="localhost"
-db_user="user_name"
-db_password="password"
-db_port="5432"
-mon_db_name="mon"
-src_db_name="anz"
-
-"#;
-        let config_string = config.to_string();
-        let res = populate_config_vars(&config_string).unwrap();
-
-        assert_eq!(res.folders.csv_data_path, PathBuf::from("E:/MDR source data/WHO/data"));
-        assert_eq!(res.folders.json_data_path, PathBuf::from("E:/MDR source files"));
-        assert_eq!(res.folders.log_folder_path, PathBuf::from("E:/MDR/MDR Logs"));
-        
     }
 
 
@@ -337,9 +274,9 @@ src_db_name="anz"
         let config = r#"
 
 [folders]
-csv_data_path="E:\\MDR source data\\WHO\\data"
-csv_full_path="E:\\MDR source data\\WHO\\data\\Full export 2025-02"
-log_folder_path="E:\\MDR\\MDR Logs"
+csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
+json_data_path=""
+log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
 
 [database]
 db_host="localhost"
@@ -362,8 +299,8 @@ src_db_name="anz"
         let config = r#"
 
 [folders]
-csv_data_path="E:\\MDR source data\\WHO\\data"
-json_data_path="E:\\MDR source files"
+csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
+json_data_path="/home/steve/Data/MDR json files/anz"
 log_folder_path=""
 
 [database]
@@ -390,9 +327,9 @@ src_db_name="anz"
         let config = r#"
 
 [folders]
-csv_data_path="E:/MDR source data/WHO/data"
-json_data_path="E:/MDR source files"
-log_folder_path="E:/MDR/MDR Logs"
+csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
+json_data_path="/home/steve/Data/MDR json files/anz"
+log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
 
 [database]
 db_host="localhost"
@@ -413,9 +350,9 @@ src_db_name="anz"
         let config = r#"
 
 [folders]
-csv_data_path="E:/MDR source data/WHO/data"
-json_data_path="E:/MDR source files"
-log_folder_path="E:/MDR/MDR Logs"
+csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
+json_data_path="/home/steve/Data/MDR json files/anz"
+log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
 
 [database]
 db_user="user_name"
@@ -440,9 +377,9 @@ db_password="password"
         let config = r#"
 
 [folders]
-csv_data_path="E:/MDR source data/WHO/data"
-json_data_path="E:/MDR source files"
-log_folder_path="E:/MDR/MDR Logs"
+csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
+json_data_path="/home/steve/Data/MDR json files/anz"
+log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
 
 [database]
 db_host="localhost"

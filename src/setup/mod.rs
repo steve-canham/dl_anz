@@ -145,6 +145,7 @@ pub fn log_set_up() -> bool {
     }
 }
 
+
 pub fn get_files_to_process(data_folder: &PathBuf, last_file: &String) -> Result<Vec<String>, AppError> {
     
     let last_file_as_buf = PathBuf::from(last_file);
@@ -201,24 +202,18 @@ mod tests {
     #[test]
     fn check_results_with_no_params() {
         let config = r#"
-[data]
-full_file_stem = "ICTRPFullExport foo "
-full_file_num = "22"
-last_file_imported = "20250106 ICTRP.csv"
-target_file = "ffff.csv"
-
 [folders]
-csv_data_path="E:/MDR source data/WHO/data"
-csv_full_path="E:/MDR source data/WHO/data/Full export 2025-02"
-json_data_path="E:/MDR source files"
-log_folder_path="E:/MDR/MDR Logs"
+csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
+json_data_path="/home/steve/Data/MDR json files/anz"
+log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
 
 [database]
 db_host="localhost"
-db_user="user_name"
-db_password="password"
-db_port="5433"
-db_name="mon"
+db_user="pg_user"
+db_password="foo"
+db_port="5432"
+mon_db_name="mon"
+src_db_name="anz"
         "#;
         let config_string = config.to_string();
         config_reader::populate_config_vars(&config_string).unwrap();
@@ -237,24 +232,18 @@ db_name="mon"
     #[test]
     fn check_cli_vars_overwrite_config_values() {
         let config = r#"
-[data]
-full_file_stem = "ICTRPFullExport "
-full_file_num = "22"
-last_file_imported = "20250106 ICTRP.csv"
-target_file = "20250210 ICTRP.csv"
-
 [folders]
-csv_data_path="E:/MDR source data/WHO/data"
-csv_full_path="E:/MDR source data/WHO/data/Full export 2025-02"
-json_data_path="E:/MDR source files"
-log_folder_path="E:/MDR/MDR Logs"
+csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
+json_data_path="/home/steve/Data/MDR json files/anz"
+log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
 
 [database]
 db_host="localhost"
-db_user="user_name"
-db_password="password"
-db_port="5433"
-db_name="mon"
+db_user="pg_user"
+db_password="foo"
+db_port="5432"
+mon_db_name="mon"
+src_db_name="anz"
         "#;
         let config_string = config.to_string();
         config_reader::populate_config_vars(&config_string).unwrap();
