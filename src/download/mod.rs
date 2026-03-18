@@ -1,27 +1,41 @@
-mod file_models;
-mod processor;
+//mod file_models;
+//mod processor;
 pub mod data_access;
 pub mod gen_helper;
-mod who_helper;
+//mod who_helper;
 
-use std::collections::HashMap;
+//use std::collections::HashMap;
 use std::path::PathBuf;
 use crate::{AppError, DownloadResult};
-use data_access::{update_who_study_mon, add_new_single_file_record, 
-    add_contents_record, store_who_summary};
-use file_models::WHOLine;
-use super::setup::config_reader::fetch_src_db_name;
-use std::fs;
-use std::io::BufReader;
-use std::fs::File;
-use csv::ReaderBuilder;
-use std::io::Write;
-use serde_json::to_string_pretty;
+//use data_access::{update_who_study_mon, add_new_single_file_record, 
+    //add_contents_record, store_who_summary};
+//use file_models::WHOLine;
+//use super::setup::config_reader::fetch_src_db_name;
+//use std::fs;
+//use std::io::BufReader;
+//use std::fs::File;
+//use csv::ReaderBuilder;
+//use std::io::Write;
+//use serde_json::to_string_pretty;
 use sqlx::{Pool, Postgres};
-use log::info;
+//use log::info;
 
+pub async fn process_excel_file(_file_path: &PathBuf, _json_path: &PathBuf, _dl_id:i32, pool: &Pool<Postgres>) -> Result<DownloadResult, AppError> {
 
-pub async fn process_files(file_path: &PathBuf, json_path: &PathBuf, dl_id:i32, pool: &Pool<Postgres>) -> Result<DownloadResult, AppError> {
+        let sql = include_str!("../../sql/xl_tables.sql");
+
+        sqlx::raw_sql(sql).execute(pool)
+        .await
+        .map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
+
+let excel_res = DownloadResult::new();
+
+Ok(excel_res)
+
+}
+
+/* 
+pub async fn xrocess_files(file_path: &PathBuf, json_path: &PathBuf, dl_id:i32, pool: &Pool<Postgres>) -> Result<DownloadResult, AppError> {
 
     // Set up source file, csv reader, counters, hash table.
     
@@ -131,3 +145,4 @@ fn folder_exists(folder_name: &PathBuf) -> bool {
     };
     res
 }
+*/

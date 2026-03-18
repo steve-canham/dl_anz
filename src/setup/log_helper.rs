@@ -79,10 +79,12 @@ pub fn log_startup_params (ip : &InitParams) {
     info!("");
     info!("************************************");
     info!("");
-    info!("csv data path: {:?}", ip.csv_data_path);
-    info!("json data parth: {:?}", ip.json_data_path);
+    info!("excel source file path: {:?}", ip.excel_data_path);
+    info!("json folder parth: {:?}", ip.json_folder_path);
     info!("log folder path: {:?}", ip.log_folder_path);
-
+    info!("importing: {:?}", ip.importing);
+    info!("importing: {:?}", ip.transforming);
+    info!("importing: {:?}", ip.coding);
     info!("");
     info!("************************************");
     info!("");

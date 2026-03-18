@@ -1,5 +1,6 @@
 
 pub mod setup;
+pub mod data_models;
 pub mod err;
 mod download;
 
@@ -50,16 +51,31 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
     let mon_pool = setup::get_mon_db_pool().await?;  // pool for the monitoring db
     let src_pool = setup::get_src_db_pool().await?;  // pool for the source specific db
 
-    // Download type is constant - reading data from a set of csv files.
-    // First recreate the sd schema tables, get Id of this download,
-    // then import the data into the sd tables
-    // before updating the download record.
+    if params.importing {
 
-    setup::create_tables::create_tables(&src_pool).await?;
+        // Download type is constant - reading data from an Excel spreadsheet (with 18 relevant sheets)
+        // First recreate the xl schema tables, get Id of this download,
+        // then import the data into the xl tables
+        // before updating the download record.
+        
+        let dl_id = get_next_download_id(&mon_pool).await?;
+        let res = download::process_excel_file(&params.excel_data_path, &params.json_folder_path, dl_id, &src_pool).await?;
+        update_dl_event_record (dl_id, 1, res, &mon_pool).await?;
+    }
 
-    let dl_id = get_next_download_id(&mon_pool).await?;
-    let res = download::process_files(&params.csv_data_path, &params.json_data_path, dl_id, &src_pool).await?;
-    update_dl_event_record (dl_id, 1, res, &mon_pool).await?;
+
+    if params.transforming {
+
+
+
+    }
+
+
+    if params.coding {
+
+
+
+    }
     
     Ok(())  
 }

@@ -8,16 +8,21 @@ use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
 pub struct TomlConfig {
+    pub data: Option<TomlDataPars>,
     pub folders: Option<TomlFolderPars>, 
     pub database: Option<TomlDBPars>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct TomlFolderPars {
-    pub csv_data_path: Option<String>,
-    pub json_data_path: Option<String>,
-    pub log_folder_path: Option<String>,
+pub struct TomlDataPars {
+    pub excel_source_file: Option<String>,
+}
 
+#[derive(Debug, Deserialize)]
+pub struct TomlFolderPars {
+    pub excel_data_folder: Option<String>,
+    pub json_data_folder: Option<String>,
+    pub log_folder: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -32,14 +37,19 @@ pub struct TomlDBPars {
 
 
 pub struct Config {
+    pub data_details: DataPars, 
     pub folders: FolderPars, 
     pub db_pars: DBPars,
 }
 
+pub struct DataPars {
+    pub excel_source_file: String,
+}
+
 pub struct FolderPars {
-    pub csv_data_path: PathBuf,
-    pub json_data_path: PathBuf,
-    pub log_folder_path: PathBuf,
+    pub excel_data_folder: PathBuf,
+    pub json_data_folder: PathBuf,
+    pub log_folder: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -66,36 +76,54 @@ pub fn populate_config_vars(config_string: &String) -> Result<Config, AppError> 
             "Cannot find a section called '[database]'.".to_string()))},
     };
 
+    let toml_data_details = match toml_config.data {
+        Some(d) => d,
+        None => {return Result::Err(AppError::ConfigurationError("Missing or misspelt configuration section.".to_string(),
+        "Cannot find a section called '[data]'.".to_string()))},
+    };
+
     let toml_folders = match toml_config.folders {
         Some(f) => f,
         None => {return Result::Err(AppError::ConfigurationError("Missing or misspelt configuration section.".to_string(),
            "Cannot find a section called '[folders]'.".to_string()))},
     };
-       
+
+    let config_data_dets = verify_data_parameters(toml_data_details)?; 
     let config_folders = verify_folder_parameters(toml_folders)?;
     let config_db_pars = verify_db_parameters(toml_database)?;
 
     let _ = DB_PARS.set(config_db_pars.clone());
 
     Ok(Config{
+        data_details: config_data_dets,
         folders: config_folders,
         db_pars: config_db_pars,
     })
 }
 
 
+fn verify_data_parameters(toml_data_pars: TomlDataPars) -> Result<DataPars, AppError> {
+
+    let excel_source_file = check_defaulted_string (toml_data_pars.excel_source_file, "excel source file", "excel_source_file ", "");
+        
+    Ok(DataPars {
+        excel_source_file,
+    })
+}
+
+
 fn verify_folder_parameters(toml_folders: TomlFolderPars) -> Result<FolderPars, AppError> {
 
-    let csv_data_path_string = check_defaulted_string (toml_folders.csv_data_path, "csv data path", "csv_data_path", "");
+    let excel_data_folder_string = check_essential_string (toml_folders.excel_data_folder, "excel data folder", "excel_data_folder")?;
 
-    let json_data_path_string = check_essential_string (toml_folders.json_data_path, "json outputs parents folder", "json_data_path")?;
+    let json_data_folder_string = check_essential_string (toml_folders.json_data_folder, "json outputs parent folder", "json_data_folder")?;
 
-    let log_folder_path_string = check_essential_string (toml_folders.log_folder_path, "log folder", "log_folder_path")?;
+    let log_folder_string = check_essential_string (toml_folders.log_folder, "log folder", "log_folder")?;
 
     Ok(FolderPars {
-        csv_data_path: PathBuf::from(csv_data_path_string),
-        json_data_path: PathBuf::from(json_data_path_string),
-        log_folder_path: PathBuf::from(log_folder_path_string),
+        excel_data_folder: PathBuf::from(excel_data_folder_string),
+        json_data_folder: PathBuf::from(json_data_folder_string),
+        log_folder: PathBuf::from(log_folder_string),
     })
 }
 
@@ -114,7 +142,7 @@ fn verify_db_parameters(toml_database: TomlDBPars) -> Result<DBPars, AppError> {
     let db_port: usize = db_port_as_string.parse().unwrap_or_else(|_| 5432);
 
     let mon_db_name = check_defaulted_string (toml_database.mon_db_name, "Mon DB name", "mon", "mon");
-    let src_db_name = check_defaulted_string (toml_database.src_db_name, "Src DB name", "who", "who");
+    let src_db_name = check_defaulted_string (toml_database.src_db_name, "Src DB name", "anz", "anz");
 
     Ok(DBPars {
         db_host,
@@ -163,6 +191,8 @@ fn check_defaulted_string (src_name: Option<String>, value_name: &str, default_n
     }
 }
 
+
+
 pub fn fetch_mon_db_name() -> Result<String, AppError> {
     let db_pars = match DB_PARS.get() {
          Some(dbp) => dbp,
@@ -207,11 +237,13 @@ mod tests {
     fn check_config_with_all_params_present() {
 
         let config = r#"
+[data]
+excel_source_file = "TrialDetails_test.xlsx"
 
 [folders]
-csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
-json_data_path="/home/steve/Data/MDR json files/anz"
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
+excel_data_folder="/home/steve/Data/MDR source data/ANZCTR"
+json_data_folder="/home/steve/Data/MDR json files/anz"
+log_folder="/home/steve/Data/MDR logs/anz"
 
 [database]
 db_host="localhost"
@@ -225,9 +257,9 @@ src_db_name="anz"
         let config_string = config.to_string();
         let res = populate_config_vars(&config_string).unwrap();
 
-        assert_eq!(res.folders.csv_data_path, PathBuf::from("/home/steve/Data/MDR source data/ANZCTR"));
-        assert_eq!(res.folders.json_data_path, PathBuf::from("/home/steve/Data/MDR json files/anz"));
-        assert_eq!(res.folders.log_folder_path, PathBuf::from("/home/steve/Data/MDR/MDR_Logs/anz"));
+        assert_eq!(res.folders.excel_data_folder, PathBuf::from("/home/steve/Data/MDR source data/ANZCTR"));
+        assert_eq!(res.folders.json_data_folder, PathBuf::from("/home/steve/Data/MDR json files/anz"));
+        assert_eq!(res.folders.log_folder, PathBuf::from("/home/steve/Data/MDR logs/anz"));
 
         assert_eq!(res.db_pars.db_host, "localhost");
         assert_eq!(res.db_pars.db_user, "user_name");
@@ -239,44 +271,16 @@ src_db_name="anz"
     
 
     #[test]
-    fn check_config_with_missing_csv_folder() {
-
-        let config = r#"
-[folders]
-csv_data_path=""
-json_data_path="/home/steve/Data/MDR json files/anz"
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
-
-[database]
-db_host="localhost"
-db_user="user_name"
-db_password="password"
-db_port="5432"
-mon_db_name="mon"
-src_db_name="anz"
-
-"#;
-        let config_string = config.to_string();
-        let res = populate_config_vars(&config_string).unwrap();
-
-        assert_eq!(res.folders.csv_data_path, PathBuf::from(""));
-        assert_eq!(res.folders.json_data_path, PathBuf::from("/home/steve/Data/MDR json files/anz"));
-        assert_eq!(res.folders.log_folder_path, PathBuf::from("/home/steve/Data/MDR/MDR_Logs/anz"));
-
-
-    }
-
-
-    #[test]
     #[should_panic]
-    fn check_panics_if_missing_json_folder () {
-
+    fn check_panics_if_missing_excel_path() {
         let config = r#"
+[data]
+excel_source_file = "TrialDetails_test.xlsx"
 
 [folders]
-csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
-json_data_path=""
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
+excel_data_folder=""
+json_data_folder="/home/steve/Data/MDR json files/anz"
+log_folder="/home/steve/Data/MDR logs/anz"
 
 [database]
 db_host="localhost"
@@ -289,6 +293,7 @@ src_db_name="anz"
 "#;
         let config_string = config.to_string();
         let _res = populate_config_vars(&config_string).unwrap();
+
     }
 
 
@@ -297,11 +302,13 @@ src_db_name="anz"
     fn check_panics_if_missing_log_folder () {
 
         let config = r#"
+[data]
+excel_source_file = "TrialDetails_test.xlsx"
 
 [folders]
-csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
-json_data_path="/home/steve/Data/MDR json files/anz"
-log_folder_path=""
+excel_data_folder="/home/steve/Data/MDR source data/ANZCTR"
+json_data_folder="/home/steve/Data/MDR json files/anz"
+log_folder=""
 
 [database]
 db_host="localhost"
@@ -315,9 +322,7 @@ src_db_name="anz"
         let config_string = config.to_string();
         let _res = populate_config_vars(&config_string).unwrap();
     }
-    
-
-    
+       
 
 
     #[test]
@@ -325,11 +330,13 @@ src_db_name="anz"
     fn check_missing_user_name_panics() {
 
         let config = r#"
+[data]
+excel_source_file = "TrialDetails_test.xlsx"
 
 [folders]
-csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
-json_data_path="/home/steve/Data/MDR json files/anz"
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
+excel_data_folder="/home/steve/Data/MDR source data/ANZCTR"
+json_data_folder="/home/steve/Data/MDR json files/anz"
+log_folder="/home/steve/Data/MDR logs/anz"
 
 [database]
 db_host="localhost"
@@ -348,11 +355,13 @@ src_db_name="anz"
     fn check_db_defaults_are_supplied() {
 
         let config = r#"
+[data]
+excel_source_file = "TrialDetails_test.xlsx"
 
 [folders]
-csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
-json_data_path="/home/steve/Data/MDR json files/anz"
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
+excel_data_folder="/home/steve/Data/MDR source data/ANZCTR"
+json_data_folder="/home/steve/Data/MDR json files/anz"
+log_folder="/home/steve/Data/MDR logs/anz"
 
 [database]
 db_user="user_name"
@@ -375,11 +384,13 @@ db_password="password"
     fn missing_port_gets_default() {
 
         let config = r#"
+[data]
+excel_source_file = "TrialDetails_test.xlsx"
 
 [folders]
-csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
-json_data_path="/home/steve/Data/MDR json files/anz"
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
+excel_data_folder="/home/steve/Data/MDR source data/ANZCTR"
+json_data_folder="/home/steve/Data/MDR json files/anz"
+log_folder="/home/steve/Data/MDR logs/anz"
 
 [database]
 db_host="localhost"
