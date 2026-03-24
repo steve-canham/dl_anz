@@ -1,4 +1,3 @@
-
 SET client_min_messages TO WARNING; 
 create schema if not exists xl;
 
@@ -26,9 +25,9 @@ create table xl.studies (
   , trial_website            varchar
   , publication              varchar
   , public_notes             varchar
-}
-create index tid on xl.trials(trial_id);
-create index xl_sid on xl.trials(actrn_id);
+);
+create index tid on xl.studies(trial_id);
+create index xl_sid on xl.studies(actrn_id);
 
 
 drop table if exists xl.study_lifecycles;
@@ -47,7 +46,7 @@ create table xl.study_lifecycles (
   , withdrawn_reason_other   varchar
   , recruitment_country      varchar
   , recruitment_state        varchar
-}
+);
 create index lc_tid on xl.study_lifecycles(trial_id);
 create index lc_sid on xl.study_lifecycles(actrn_id);
 
@@ -77,7 +76,7 @@ create table xl.study_features (
   , obs_duration             varchar
   , obs_selection            varchar
   , obs_timing               varchar
-}
+);
 create index sf_tid on xl.study_features(trial_id);
 create index sf_sid on xl.study_features(actrn_id);
 
@@ -97,38 +96,9 @@ create table xl.study_participants (
   , target_sample_size       varchar
   , final_sample_size        varchar
   , current_sample_size      varchar
-}
+);
 create index sp_tid on xl.study_participants(trial_id);
 create index sp_sid on xl.study_participants(actrn_id);
-
-
-drop table if exists xl.trials;
-create table xl.trials (
-    
-  , purpose                  varchar
-  , allocation               varchar
-  , concealment              varchar
-  , sequencing               varchar
-  , masking                  varchar
-  , assignment               varchar
-  , other_design_features    varchar
-  , endpoint                 varchar
-  , phase                    varchar
-  , stat_methods             varchar
-  , masking_participants     varchar
-  , masking_clinicians       varchar
-  , masking_assessors        varchar
-  , masking_analysts         varchar
-  , patient_registry         varchar
-  , registry_followup        varchar
-  , registry_followup_type   varchar
-  , obs_purpose              varchar
-  , obs_duration             varchar
-  , obs_selection            varchar
-  , obs_timing               varchar
-);
-create index tid on xl.trials(trial_id);
-create index xl_sid on xl.trials(actrn_id);
 
 
 drop table if exists xl.secondary_ids;
@@ -313,11 +283,3 @@ create index external_publications_id on xl.external_publications(trial_id);
 
 SET client_min_messages TO NOTICE; 
 
-
--- Not required
---drop table if exists xl.postcodes;
---create table xl.postcodes (
---    trial_id				    int
--- , postcode        	    	varchar
---);
---create index postcodes_id on xl.postcodes(trial_id);

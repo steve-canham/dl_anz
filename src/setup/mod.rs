@@ -55,9 +55,9 @@ pub fn get_params(cli_pars: CliPars, config_string: &String) -> Result<InitParam
 
         // Check config value exists - if not (and CLI source - "") raise error
 
-        if config_source_file == "" {
+        if cli_pars.importing && config_source_file == "" {
             return Result::Err(AppError::ConfigurationError("Essential configuration value missing or misspelt.".to_string(),
-            format!("No value given for source file, in either CLI or Config. file." )));
+            format!("No value given for source file, in either CLI or config file." )));
         }
 
         excel_data_path = [excel_data_folder, PathBuf::from(&config_source_file)].iter().collect();
@@ -265,6 +265,7 @@ src_db_name="anz"
 
     }
 
+
     #[test]
     fn check_cli_vars_overwrite_config_values() {
         let config = r#"
@@ -305,7 +306,7 @@ src_db_name="anz"
 
     #[should_panic]
     #[test]
-    fn check_panics_if_source_file_does_not_exist() {
+    fn check_panics_if_importing_and_source_file_does_not_exist() {
         let config = r#"
 [data]
 excel_source_file = "silly_file_name.xslx"
@@ -338,7 +339,7 @@ src_db_name="anz"
 
     #[should_panic]
     #[test]
-    fn check_panics_if_no_source_file() {
+    fn check_panics_if_importing_and_no_source_file() {
         let config = r#"
 [data]
 excel_source_file = ""
@@ -359,7 +360,7 @@ src_db_name="anz"
         let config_string = config.to_string();
         config_reader::populate_config_vars(&config_string).unwrap();
 
-        let args : Vec<&str> = vec!["dummy target", "-a"];
+        let args : Vec<&str> = vec!["dummy target", "-i"];
         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
         let cli_pars = cli_reader::fetch_valid_arguments(test_args).unwrap();
 
@@ -369,5 +370,42 @@ src_db_name="anz"
 
 
 
+    #[should_panic]
+    #[test]
+    fn check_ok_if_not_importing_and_source_file_does_not_exist() {
+        let config = r#"
+[data]
+excel_source_file = "silly_file_name.xslx"
+
+[folders]
+excel_data_folder="/home/steve/Data/MDR source data/ANZCTR"
+json_data_folder="/home/steve/Data/MDR json files/anz"
+log_folder="/home/steve/Data/MDR logs/anz"
+
+[database]
+db_host="localhost"
+db_user="pg_user"
+db_password="foo"
+db_port="5432"
+mon_db_name="mon"
+src_db_name="anz"
+        "#;
+        let config_string = config.to_string();
+        config_reader::populate_config_vars(&config_string).unwrap();
+
+        let args : Vec<&str> = vec!["dummy target", "-t"];
+        let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
+        let cli_pars = cli_reader::fetch_valid_arguments(test_args).unwrap();
+
+        let res = get_params(cli_pars, &config_string).unwrap();
+
+        assert_eq!(res.excel_data_path, PathBuf::from("/home/steve/Data/MDR source data/ANZCTR/silly_file_name.xslx"));
+        assert_eq!(res.json_folder_path, PathBuf::from("/home/steve/Data/MDR json files/anz"));
+        assert_eq!(res.log_folder_path, PathBuf::from("/home/steve/Data/MDR logs/anz"));
+        assert_eq!(res.importing, false);
+        assert_eq!(res.transforming, true);
+        assert_eq!(res.coding, false);
+        
+    }
 
 }

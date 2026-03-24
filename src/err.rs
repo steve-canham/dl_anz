@@ -42,8 +42,8 @@ pub enum AppError {
     #[error("Error during IO operation: {0:?}")]
     IoError(#[from] std::io::Error),
 
-    #[error("Error during CSV read operation: {0:?}")]
-    CsvError(#[from] csv::Error),
+    #[error("Error during calamine read operation: {0:?}")]
+    CalError(#[from] calamine::Error),
 
     #[error("Error during parsing an integer: {0:?}")]
     ParseError(#[from] ParseIntError),
@@ -84,7 +84,7 @@ pub fn report_error(e: AppError) -> () {
   
         AppError::IoError(e) => print_simple_error (e.to_string(), "IO ERROR"),
 
-        AppError::CsvError(e) => print_simple_error (e.to_string(), "CSV ERROR"),
+        AppError::CalError(e) => print_simple_error (e.to_string(), "Calamine ERROR"),
 
         AppError::ParseError(e) => print_simple_error (e.to_string(), "PARSE INT ERROR"),
     }

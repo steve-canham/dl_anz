@@ -7,6 +7,7 @@ pub mod gen_helper;
 //use std::collections::HashMap;
 use std::path::PathBuf;
 use crate::{AppError, DownloadResult};
+use calamine::{open_workbook, Data, Reader, Xlsx};
 //use data_access::{update_who_study_mon, add_new_single_file_record, 
     //add_contents_record, store_who_summary};
 //use file_models::WHOLine;
@@ -18,15 +19,65 @@ use crate::{AppError, DownloadResult};
 //use std::io::Write;
 //use serde_json::to_string_pretty;
 use sqlx::{Pool, Postgres};
-//use log::info;
+use log::info;
 
-pub async fn process_excel_file(_file_path: &PathBuf, _json_path: &PathBuf, _dl_id:i32, pool: &Pool<Postgres>) -> Result<DownloadResult, AppError> {
+pub async fn process_excel_file(file_path: &PathBuf, _json_path: &PathBuf, _dl_id:i32, pool: &Pool<Postgres>) -> Result<DownloadResult, AppError> {
 
         let sql = include_str!("../../sql/xl_tables.sql");
 
         sqlx::raw_sql(sql).execute(pool)
         .await
         .map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
+
+        let mut workbook: Xlsx<_> = open_workbook(file_path).unwrap();
+
+        let worksheet_data = workbook.worksheet_range("SECONDARY ID").unwrap();
+
+        // Creates an iterator containing all rows. Each row is represented as a vector.
+        // Selects only the first row from the iterator of rows. We select the 
+        // first row to get the columns. 
+        // Creates an iterator containing each cell in the selected row. Each 
+        // cell is a value of type Data. 
+        // It applies a map operation to convert the content of each cell into 
+        // a string. The to_string() function is called for each cell and the 
+        // cell data is converted to string.
+        // Converts iterator elements into a data structure of the specified 
+        // collection type by performing an addition operation.
+
+        let columns_vector: Vec<String> = worksheet_data
+        .rows().nth(0).unwrap()
+        .iter() 
+        .map(|c| c.to_string())
+        .collect();
+
+        // Creates an iterator containing all rows in worksheet_data.
+        // To get data from row 1 onwards
+        // Each row is divided into cells with the .iter() 
+        // function and each cell is cloned with the .map() function
+        // collection type by performing an addition operation.
+
+        let all_rows: Vec<Vec<Data>> = worksheet_data
+        .rows()
+        .skip(1)
+        .map(|row| row.iter().map(|c| c.clone()).collect())
+        .collect();
+
+        for s in columns_vector {
+            info!("column {}", s)
+        }
+
+        for i in 0..500 {
+            let r = all_rows[i].clone();
+            let sec_id = r[1].to_string();
+            let low_sec_id = sec_id.to_lowercase();
+            if !low_sec_id.starts_with("nil") && low_sec_id != "na" && low_sec_id != "n/a" 
+               && low_sec_id != "no" && !low_sec_id.starts_with("none") {
+                info!("col 0 {}; col 1 {}", r[0].to_string(), r[1].to_string());
+            }
+        }
+
+
+
 
 let excel_res = DownloadResult::new();
 
