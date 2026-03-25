@@ -57,9 +57,11 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
         // First recreate the xl schema tables, get Id of this download,
         // then import the data into the xl tables
         // before updating the download record.
+
+        download::setup_xl_tables(&src_pool);
         
         let dl_id = get_next_download_id("All, from excel file", &mon_pool).await?;
-        let res = download::process_excel_file(&params.excel_data_path, &params.json_folder_path, dl_id, &src_pool).await?;
+        let res = download::process_excel_file(&params.excel_data_path, &src_pool).await?;
         update_dl_event_record (dl_id, res, &params.excel_data_path, &mon_pool).await?;
     }
 

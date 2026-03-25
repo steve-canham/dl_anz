@@ -4,10 +4,11 @@ pub mod data_access;
 pub mod gen_helper;
 //mod who_helper;
 
-//use std::collections::HashMap;
+use crate::data_models::xl_data_models::*;
+use crate::data_models::data_vecs::*;
 use std::path::PathBuf;
 use crate::{AppError, DownloadResult};
-use calamine::{open_workbook, Data, Reader, Xlsx};
+use calamine::{open_workbook, Reader, Data, DataType, Xlsx, Range};
 //use data_access::{update_who_study_mon, add_new_single_file_record, 
     //add_contents_record, store_who_summary};
 //use file_models::WHOLine;
@@ -21,69 +22,155 @@ use calamine::{open_workbook, Data, Reader, Xlsx};
 use sqlx::{Pool, Postgres};
 use log::info;
 
-pub async fn process_excel_file(file_path: &PathBuf, _json_path: &PathBuf, _dl_id:i32, pool: &Pool<Postgres>) -> Result<DownloadResult, AppError> {
+pub async fn setup_xl_tables(pool: &Pool<Postgres>) -> Result<(), AppError> {
 
-        let sql = include_str!("../../sql/xl_tables.sql");
+    let sql = include_str!("../../sql/xl_tables.sql");
 
-        sqlx::raw_sql(sql).execute(pool)
-        .await
-        .map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
+    sqlx::raw_sql(sql).execute(pool)
+    .await
+    .map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
-        let mut workbook: Xlsx<_> = open_workbook(file_path).unwrap();
+    Ok(())
+}
 
-        let worksheet_data = workbook.worksheet_range("SECONDARY ID").unwrap();
+pub async fn process_excel_file(file_path: &PathBuf, pool: &Pool<Postgres>) -> Result<DownloadResult, AppError> {
 
-        // Creates an iterator containing all rows. Each row is represented as a vector.
-        // Selects only the first row from the iterator of rows. We select the 
-        // first row to get the columns. 
-        // Creates an iterator containing each cell in the selected row. Each 
-        // cell is a value of type Data. 
-        // It applies a map operation to convert the content of each cell into 
-        // a string. The to_string() function is called for each cell and the 
-        // cell data is converted to string.
-        // Converts iterator elements into a data structure of the specified 
-        // collection type by performing an addition operation.
+    let mut workbook: Xlsx<_> = open_workbook(file_path)
+    .map_err(|_| AppError::CalError(format!("Cannot open excel workbook at {}", file_path.display())))?;
+    
+    let range = workbook.worksheet_range("SECONDARY ID")
+    .map_err(|_| AppError::CalError("Cannot find sheet SECONDARY ID".to_string()))?;
+    let _r1 = do_single_fields(&range, "secondary_ids", "sec_id", pool).await?;
 
-        let columns_vector: Vec<String> = worksheet_data
-        .rows().nth(0).unwrap()
-        .iter() 
-        .map(|c| c.to_string())
-        .collect();
+    let range = workbook.worksheet_range("HEALTH CONDITION")
+    .map_err(|_| AppError::CalError("Cannot find sheet HEALTH CONDITION".to_string()))?;
+    let r2 = do_single_fields(&range, "health_conditions", "health_condition", pool).await?;
 
-        // Creates an iterator containing all rows in worksheet_data.
-        // To get data from row 1 onwards
-        // Each row is divided into cells with the .iter() 
-        // function and each cell is cloned with the .map() function
-        // collection type by performing an addition operation.
+    let range = workbook.worksheet_range("INTERVENTION CODE")
+    .map_err(|_| AppError::CalError("Cannot find sheet INTERVENTION CODE".to_string()))?;
+    let _r3 = do_single_fields(&range, "intervention_codes", "intervention_code", pool).await?;
 
-        let all_rows: Vec<Vec<Data>> = worksheet_data
-        .rows()
-        .skip(1)
-        .map(|row| row.iter().map(|c| c.clone()).collect())
-        .collect();
+    
 
-        for s in columns_vector {
-            info!("column {}", s)
-        }
+    Ok(r2)
 
-        for i in 0..500 {
-            let r = all_rows[i].clone();
-            let sec_id = r[1].to_string();
-            let low_sec_id = sec_id.to_lowercase();
-            if !low_sec_id.starts_with("nil") && low_sec_id != "na" && low_sec_id != "n/a" 
-               && low_sec_id != "no" && !low_sec_id.starts_with("none") {
-                info!("col 0 {}; col 1 {}", r[0].to_string(), r[1].to_string());
+}
+
+
+async fn do_single_fields(range: &Range<Data>, table_name: &str, field_name: &str,  pool: &Pool<Postgres>) -> Result<DownloadResult, AppError> {
+
+let data_rows: Vec<Vec<Data>> = range
+            .rows().skip(1)    // jump over header
+            .map(|row| row.iter()
+                    .map(|c| c.clone()).collect())  // each row as an array of data
+            .collect();
+
+    let mut examined = 0;
+    let mut added = 0;
+    let mut data_vecs = SingleDataFields::new(250);
+    let mut n = 0;
+
+    for r in data_rows {
+
+        examined += 1;
+
+        if let Some(id) =  r[0].as_i64() {     // valid id
+
+            let tid = id as i32;
+
+            if let Some(s) =  r[1].as_string() {
+                let sid = s.trim()
+                                .replace("\"", "").replace("'", "")
+                                .replace("‘", "");
+                let sid = sid.trim_start_matches(&['-', '“']);
+                let low_sid = sid.to_lowercase();
+
+                let valid = match table_name {
+                    "secondary_ids" => valid_sec_id(&low_sid),
+                    "health_conditions" => valid_condition(&low_sid),
+                    "intervention_codes" => valid_int_code(&low_sid),
+                    _ => false
+                };
+
+                if valid {
+                    data_vecs.add(XLSingleDataField {
+                        trial_id: tid,
+                        data_field: Some(sid.to_string()),
+                    });
+                    added +=1;
+                    n +=1;
+
+                    if n == 250 {
+                        data_vecs.store_data(table_name, field_name, pool).await?;
+                        data_vecs = SingleDataFields::new(250);
+                        n = 0;
+                    }
+                }
             }
         }
 
+    }
+        
+    data_vecs.store_data(table_name, field_name, pool).await?;
+
+    let mut res = DownloadResult::new();
+    res.num_checked = examined;
+    res.num_downloaded = added;
+    res.num_added = added;
+
+    info!("{} {} records examined", table_name, examined);
+    info!("{} {} records added", table_name, added);
+    info!("");
+
+    Ok(res)
+}
 
 
+fn valid_sec_id (low_sid: &String) -> bool {
+    let mut validity = true;
 
-let excel_res = DownloadResult::new();
+    if low_sid.len() <= 2 || low_sid == "***" 
+        || low_sid == "unknown"  {validity = false;}
 
-Ok(excel_res)
+    if low_sid.starts_with('n') {
+        if low_sid.starts_with("nil")  || low_sid.starts_with("none")
+        || low_sid.starts_with("not ") || low_sid.starts_with("no ") 
+        || low_sid.starts_with("non") || low_sid.starts_with("no.") 
+        || low_sid == "n/a" || low_sid == "n/s" || low_sid == "n.a." || low_sid == "na." 
+        || low_sid == "ni known" || low_sid == "nik known" 
+        || low_sid == "nihil" || low_sid.starts_with("new secondary id. please modify")
+        {validity = false;}
+    }
+
+    if low_sid.starts_with('t') {
+        if low_sid.starts_with("there ") || low_sid.starts_with("the trial ")
+        || low_sid.starts_with("there's") || low_sid.starts_with("this trial does not") 
+        || low_sid.starts_with("this study has") || low_sid.starts_with("trial has not") 
+        {validity = false;}
+    }
+
+    validity
 
 }
+
+
+fn valid_condition (low_sid: &String) -> bool {
+    let mut validity = true;
+
+    if low_sid.starts_with('n') {
+        if low_sid.starts_with("nil")  || low_sid.starts_with("none")
+        || low_sid == "n/a" || low_sid == "n/s" || low_sid == "n.a." || low_sid == "na." 
+        {validity = false;}
+    }
+    validity
+}
+
+
+fn valid_int_code (low_sid: &String) -> bool {
+
+    low_sid != "none" && low_sid != "not applicable" 
+}
+
 
 /* 
 pub async fn xrocess_files(file_path: &PathBuf, json_path: &PathBuf, dl_id:i32, pool: &Pool<Postgres>) -> Result<DownloadResult, AppError> {

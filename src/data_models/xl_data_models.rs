@@ -1,5 +1,7 @@
+//use calamine::{deserialize_as_i64_or_none};
+use serde::Deserialize;
 
-pub struct Trial {
+pub struct XLTrial {
     pub trial_id: i32, 
     pub actrn_id: String, 
     pub submit_date: Option<String>, 
@@ -24,7 +26,7 @@ pub struct Trial {
 }
 
 
-pub struct StudyLifeCycle {
+pub struct XLStudyLifeCycle {
     pub trial_id: i32, 
     pub actrn_id: String, 
     pub antic_start_date: Option<String>, 
@@ -42,7 +44,7 @@ pub struct StudyLifeCycle {
 }
 
 
-pub struct StudyFeatures {
+pub struct XLStudyFeatures {
     pub trial_id: i32, 
     pub actrn_id: String, 
     pub interventions: Option<String>, 
@@ -69,7 +71,7 @@ pub struct StudyFeatures {
 }
 
 
-pub struct Participants {
+pub struct XLParticipants {
     pub trial_id: i32, 
     pub actrn_id: String, 
     pub inclusion_criteria: Option<String>, 
@@ -88,14 +90,18 @@ pub struct Participants {
 
 // Use for secondary_ids, health_conditions, intervention_codes, hospitals
 
-pub struct SingleDataField {
+
+#[derive(Deserialize)]
+pub struct XLSingleDataField {
+    #[serde(rename = "TRIAL ID")]
     pub trial_id: i32, 
+    #[serde(rename = "SECONDARY ID")]
     pub data_field: Option<String>, 
 }
 
 // Use for condition_codes, other_countries
 
-pub struct TwoDataFields {
+pub struct XLDoubleDataField {
     pub trial_id: i32, 
     pub data_field1: Option<String>, 
     pub data_field2: Option<String>, 
@@ -103,7 +109,7 @@ pub struct TwoDataFields {
 
 // Use for primary_outcomes, secondary_outcomes
 
-pub struct Outcome {
+pub struct XLOutcome {
     pub trial_id: i32, 
     pub outcome: Option<String>, 
     pub outcome_assessment: Option<String>, 
@@ -112,14 +118,14 @@ pub struct Outcome {
 
 // Use for funding_sources, secondary_sponsors, other_collaborators
 
-pub struct TypeNameCountry {
+pub struct XLTypeNameCountry {
     pub trial_id: i32, 
     pub entity_type: Option<String>, 
     pub name: Option<String>, 
     pub country: Option<String>, 
 }
 
-pub struct EthicsCommittee {
+pub struct XLEthicsCommittee {
     pub trial_id: i32, 
     pub name: Option<String>, 
     pub address: Option<String>, 
@@ -130,7 +136,7 @@ pub struct EthicsCommittee {
 
 }
 
-pub struct Contact {
+pub struct XLContact {
     pub trial_id: i32, 
     pub contact_type: Option<String>, 
     pub name: Option<String>, 
@@ -142,7 +148,7 @@ pub struct Contact {
 }
 
 
-pub struct DSS {
+pub struct XLDSS {
     pub trial_id: i32, 
     pub ipd_availability: Option<String>, 
     pub available_to_whom: Option<String>, 
@@ -156,7 +162,7 @@ pub struct DSS {
 }
 
 
-pub struct SuppDoc {
+pub struct XLSuppDoc {
     pub trial_id: i32, 
     pub doc_type: Option<String>, 
     pub citation: Option<String>, 
@@ -167,7 +173,7 @@ pub struct SuppDoc {
 }
 
 
-pub struct StudyResult {
+pub struct XLStudyResult {
     pub trial_id: i32, 
     pub results_type: Option<String>, 
     pub is_peer_reviewed: Option<String>, 
@@ -177,7 +183,7 @@ pub struct StudyResult {
 }
 
 
-pub struct ERxternalPublic {
+pub struct XLExternalPublication {
     pub trial_id: i32, 
     pub source: Option<String>, 
     pub doi: Option<String>, 

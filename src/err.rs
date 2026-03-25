@@ -43,7 +43,7 @@ pub enum AppError {
     IoError(#[from] std::io::Error),
 
     #[error("Error during calamine read operation: {0:?}")]
-    CalError(#[from] calamine::Error),
+    CalError(String),
 
     #[error("Error during parsing an integer: {0:?}")]
     ParseError(#[from] ParseIntError),
@@ -84,7 +84,7 @@ pub fn report_error(e: AppError) -> () {
   
         AppError::IoError(e) => print_simple_error (e.to_string(), "IO ERROR"),
 
-        AppError::CalError(e) => print_simple_error (e.to_string(), "Calamine ERROR"),
+        AppError::CalError(s) => print_simple_error (s, "CALAMINE ERROR"),
 
         AppError::ParseError(e) => print_simple_error (e.to_string(), "PARSE INT ERROR"),
     }
