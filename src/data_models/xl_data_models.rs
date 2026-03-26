@@ -1,5 +1,3 @@
-//use calamine::{deserialize_as_i64_or_none};
-use serde::Deserialize;
 
 pub struct XLTrial {
     pub trial_id: i32, 
@@ -90,12 +88,8 @@ pub struct XLParticipants {
 
 // Use for secondary_ids, health_conditions, intervention_codes, hospitals
 
-
-#[derive(Deserialize)]
 pub struct XLSingleDataField {
-    #[serde(rename = "TRIAL ID")]
     pub trial_id: i32, 
-    #[serde(rename = "SECONDARY ID")]
     pub data_field: Option<String>, 
 }
 
@@ -139,6 +133,7 @@ pub struct XLEthicsCommittee {
 pub struct XLContact {
     pub trial_id: i32, 
     pub contact_type: Option<String>, 
+    pub title: Option<String>, 
     pub name: Option<String>, 
     pub address: Option<String>, 
     pub country: Option<String>, 

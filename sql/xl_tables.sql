@@ -158,6 +158,7 @@ drop table if exists xl.hospitals;
 create table xl.hospitals (
     trial_id                 int
   , hospital                 varchar
+  , location                 varchar
 );
 create index hospitals_id on xl.hospitals(trial_id);
 
