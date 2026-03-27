@@ -1,6 +1,7 @@
 //use regex::Regex;
 
 /* 
+
 pub trait StringExtensions {
     fn tidy(&self) -> Option<String>;
     fn replace_unicodes(&self) -> Option<String>;

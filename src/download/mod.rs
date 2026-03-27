@@ -4,12 +4,11 @@ pub mod dl_helper;
 
 use crate::data_models::xl_data_models::*;
 use crate::data_models::data_vecs::*;
+
+use dl_helper::{get_as_string_option, get_date_as_string_option, get_datetime_as_string_option};
 use std::path::PathBuf;
 use crate::{AppError, DownloadResult};
 use calamine::{open_workbook, Reader, Data, DataType, Xlsx, Range};
-//use data_access::{update_who_study_mon, add_new_single_file_record, 
-    //add_contents_record, store_who_summary};
-//use super::setup::config_reader::fetch_src_db_name;
 use sqlx::{Pool, Postgres};
 use log::info;
 
@@ -28,14 +27,15 @@ pub async fn process_excel_file(file_path: &PathBuf, pool: &Pool<Postgres>) -> R
 
     let mut workbook: Xlsx<_> = open_workbook(file_path)
     .map_err(|_| AppError::CalError(format!("Cannot open excel workbook at {}", file_path.display())))?;
+
     
-    //let _range = workbook.worksheet_range("TRIALS")
-    //.map_err(|_| AppError::CalError("Cannot find sheet TRIALS".to_string()))?;
-    //let _r1 = do_single_fields(&range, "secondary_ids", "sec_id", pool).await?;
+    let range = workbook.worksheet_range("TRIAL")
+    .map_err(|_| AppError::CalError("Cannot find sheet TRIAL".to_string()))?;
+    let r = do_trials(&range, pool).await?;
 
     let range = workbook.worksheet_range("SECONDARY ID")
     .map_err(|_| AppError::CalError("Cannot find sheet SECONDARY ID".to_string()))?;
-    let r = do_single_fields(&range, "secondary_ids", "sec_id", pool).await?;
+    do_single_fields(&range, "secondary_ids", "sec_id", pool).await?;
 
     let range = workbook.worksheet_range("HEALTH CONDITION")
     .map_err(|_| AppError::CalError("Cannot find sheet HEALTH CONDITION".to_string()))?;
@@ -109,6 +109,225 @@ pub async fn process_excel_file(file_path: &PathBuf, pool: &Pool<Postgres>) -> R
     Ok(r)
 
 }
+
+
+async fn do_trials(range: &Range<Data>, pool: &Pool<Postgres>) -> Result<DownloadResult, AppError> {
+
+    let mut examined = 0;
+    let mut added = 0;
+
+    let mut trial_vecs = Trials::new(250);
+    let mut lc_vecs = StudyLifeCycles::new(250);
+    let mut sf_vecs = StudyFeaturess::new(250);
+    let mut ps_vecs = Participantss::new(250);
+
+    let mut n = 0;
+   
+    for (row_num, r) in range.rows().enumerate() {
+        if row_num != 0 {
+
+            examined +=1;
+
+            if let Some(id) =  r[0].as_i64() { 
+
+                let tid = id as i32;
+
+                if let Some(sid) =  r[1].as_string() {
+
+                    //let sub_date = get_datetime_as_string_option(r[2].clone());   //C
+                    //let app_date = get_datetime_as_string_option(r[3].clone());
+                    //let title = get_as_string_option(r[4].clone());
+                    //let sci_title = get_as_string_option(r[5].clone());
+                    //let utn = get_as_string_option(r[6].clone());      //G
+                    let acronym = get_as_string_option(r[7].clone());
+                    let linked_study = get_as_string_option(r[8].clone());
+                    let intervents = get_as_string_option(r[9].clone());
+                    let comp = get_as_string_option(r[10].clone());
+                    let control = get_as_string_option(r[11].clone());
+                    let inc_crit = get_as_string_option(r[12].clone());  //M
+                    let min_age = get_as_string_option(r[13].clone());
+                    let min_age_type = get_as_string_option(r[14].clone());
+                    let max_age = get_as_string_option(r[15].clone());
+                    let max_age_type = get_as_string_option(r[16].clone());
+                    let gender = get_as_string_option(r[17].clone());    // R
+                    let volunteers = get_as_string_option(r[18].clone()); 
+                    let exc_crit = get_as_string_option(r[19].clone());
+                    let study_type = get_as_string_option(r[20].clone());
+                    let purpose = get_as_string_option(r[21].clone());
+                    let allocation = get_as_string_option(r[22].clone()); 
+                    let concealment = get_as_string_option(r[23].clone());
+                    let sequence = get_as_string_option(r[24].clone());
+                    let masking = get_as_string_option(r[25].clone()); //Z
+                    let assignment = get_as_string_option(r[26].clone());
+                    let other_feats = get_as_string_option(r[27].clone());
+                    let endpoint = get_as_string_option(r[28].clone());
+                    let phase = get_as_string_option(r[29].clone());
+                    let stat_methods = get_as_string_option(r[30].clone()); // AE
+                    let msk_parts = get_as_string_option(r[31].clone());
+                    let msk_clins = get_as_string_option(r[32].clone());
+                    let msk_out = get_as_string_option(r[33].clone());
+                    let msk_ana = get_as_string_option(r[34].clone());
+                    let pt_reg = get_as_string_option(r[35].clone());  // AJ
+                    let reg_fu = get_as_string_option(r[36].clone());
+                    let reg_fu_type = get_as_string_option(r[37].clone());
+                    let obs_purp = get_as_string_option(r[38].clone());
+                    let obs_dura = get_as_string_option(r[39].clone());
+                    let obs_selec = get_as_string_option(r[40].clone());
+                    let obs_timing = get_as_string_option(r[41].clone()); // AP
+                    let antic_sd = get_date_as_string_option(r[42].clone());
+                    let actual_sd = get_date_as_string_option(r[43].clone());
+                    let antic_ed = get_date_as_string_option(r[44].clone());
+                    let actual_ed = get_date_as_string_option(r[45].clone());
+                    let target_ss = get_as_string_option(r[46].clone());  // AU
+                    let final_ss = get_as_string_option(r[47].clone());
+                    let current_ss = get_as_string_option(r[48].clone());
+                    let antic_lvd = get_date_as_string_option(r[49].clone());
+                    let actual_lvd = get_date_as_string_option(r[50].clone());
+                    let rec_status = get_as_string_option(r[51].clone());  // AZ
+
+                    let r_len= r.len();
+
+                    let data_ana = if r_len > 52 {get_as_string_option(r[52].clone())} else {None};
+                    let wdrawn_reas = if r_len > 53 {get_as_string_option(r[53].clone())} else {None};
+                    let wdrawn_reas_oth = if r_len > 54 {get_as_string_option(r[54].clone())} else {None};
+                    let rec_country = if r_len > 55 {get_as_string_option(r[55].clone())} else {None};
+                    let rec_state = if r_len > 56 {get_as_string_option(r[56].clone())} else {None};  // BE
+                    let pri_spons_type = if r_len > 57 {get_as_string_option(r[57].clone())} else {None};
+                    let pri_spons_name = if r_len > 58 {get_as_string_option(r[58].clone())} else {None};
+                    let pri_spon_count = if r_len > 59 {get_as_string_option(r[59].clone())} else {None};
+                    let ethics_status = if r_len > 60 {get_as_string_option(r[60].clone())} else {None};
+                    let brief_summ = if r_len > 61 {get_as_string_option(r[61].clone())} else {None};
+                    let website = if r_len > 62 {get_as_string_option(r[62].clone())} else {None};  //BK
+                    let publication = if r_len > 63 {get_as_string_option(r[63].clone())} else {None};
+                    let pub_notes = if r_len > 64 {get_as_string_option(r[64].clone())} else {None};  // BM
+
+                
+                    trial_vecs.add(XLTrial {
+                        trial_id: tid, 
+                        actrn_id: sid.clone(), 
+                        submit_date: get_datetime_as_string_option(r[2].clone()), 
+                        approval_date: get_datetime_as_string_option(r[3].clone()), 
+                        study_title: get_as_string_option(r[4].clone()), 
+                        scientific_title: get_as_string_option(r[5].clone()), 
+                        utn: get_as_string_option(r[6].clone()), 
+                        trial_acronym: acronym, 
+                        linked_study: linked_study, 
+                        study_type: study_type, 
+                        patient_registry: pt_reg, 
+                        registry_followup: reg_fu, 
+                        registry_followup_type: reg_fu_type, 
+                        primary_sponsor_type: pri_spons_type, 
+                        primary_sponsor_name: pri_spons_name, 
+                        primary_sponsor_country: pri_spon_count, 
+                        ethics_status: ethics_status, 
+                        brief_summary: brief_summ, 
+                        trial_website: website, 
+                        publication: publication, 
+                        public_notes: pub_notes, 
+                    });
+
+                    lc_vecs.add(XLStudyLifeCycle { 
+                        trial_id: tid, 
+                        actrn_id: sid.clone(), 
+                        antic_start_date: antic_sd, 
+                        actual_start_date: actual_sd, 
+                        antic_end_date: antic_ed, 
+                        actual_end_date: actual_ed, 
+                        antic_last_visit_date: antic_lvd, 
+                        actual_last_visit_date: actual_lvd, 
+                        recruitment_status: rec_status, 
+                        data_analysis: data_ana, 
+                        withdrawn_reason: wdrawn_reas, 
+                        withdrawn_reason_other: wdrawn_reas_oth, 
+                        recruitment_country: rec_country, 
+                        recruitmenbt_state: rec_state,
+                    });
+
+                    sf_vecs.add(XLStudyFeatures { 
+                        trial_id: tid, 
+                        actrn_id: sid.clone(), 
+                        interventions: intervents, 
+                        comparator: comp, 
+                        control: control, 
+                        purpose: purpose, 
+                        allocation: allocation, 
+                        concealment: concealment, 
+                        sequencing: sequence, 
+                        masking: masking, 
+                        assignment: assignment, 
+                        other_design_features: other_feats, 
+                        endpoint: endpoint, 
+                        phase: phase, 
+                        stat_methods: stat_methods, 
+                        masking_participants: msk_parts, 
+                        masking_clinicians: msk_clins, 
+                        masking_assessors: msk_out, 
+                        masking_analysts: msk_ana, 
+                        obs_purpose: obs_purp, 
+                        obs_duration: obs_dura, 
+                        obs_selection: obs_selec, 
+                        obs_timing: obs_timing,
+                    });
+
+                    ps_vecs.add(XLParticipants { 
+                        trial_id: tid, 
+                        actrn_id: sid.clone(),  
+                        inclusion_criteria: inc_crit, 
+                        min_age: min_age, 
+                        min_age_type: min_age_type, 
+                        max_age: max_age, 
+                        max_age_type: max_age_type, 
+                        gender: gender, 
+                        healthy_volunteers: volunteers, 
+                        exclusion_criteria: exc_crit, 
+                        target_sample_size: target_ss, 
+                        final_sample_size: final_ss, 
+                        current_sample_size: current_ss,
+                    });
+
+                    added +=1;
+                    n +=1;
+
+                    if n == 250 {
+
+                        trial_vecs.store_data(pool).await?;
+                        lc_vecs.store_data(pool).await?;
+                        sf_vecs.store_data(pool).await?;
+                        ps_vecs.store_data(pool).await?;
+
+                        trial_vecs = Trials::new(250);
+                        lc_vecs = StudyLifeCycles::new(250);
+                        sf_vecs = StudyFeaturess::new(250);
+                        ps_vecs = Participantss::new(250);
+
+                        n = 0;
+                        
+                    }
+                }
+            }
+        }
+    }
+
+
+    trial_vecs.store_data(pool).await?;
+    lc_vecs.store_data(pool).await?;
+    sf_vecs.store_data(pool).await?;
+    ps_vecs.store_data(pool).await?;
+
+
+    let mut res = DownloadResult::new();
+    res.num_checked = examined;
+    res.num_downloaded = added;
+    res.num_added = added;
+
+    info!("trials {} records examined", examined);
+    info!("trials {} records added", added);
+    info!("");
+
+    Ok(res)
+
+}
+
 
 
 async fn do_single_fields(range: &Range<Data>, table_name: &str, field_name: &str,  pool: &Pool<Postgres>) -> Result<DownloadResult, AppError> {
@@ -618,40 +837,13 @@ async fn do_contacts(range: &Range<Data>, pool: &Pool<Postgres>) -> Result<Downl
 
                 // Assume all valid and that text does not need correction
 
-                let sid2 = match r.len() > 2 {
-                    true => r[2].as_string(),
-                    false => None,
-                };
-
-                let sid3 = match r.len() > 3 {
-                    true => r[3].as_string(),
-                    false => None,
-                };
-
-                let sid4 = match r.len() > 4 {
-                    true => r[4].as_string(),
-                    false => None,
-                };
-
-                let sid5 = match r.len() > 5 {
-                    true => r[5].as_string(),
-                    false => None,
-                };
-
-                let sid6 = match r.len() > 6 {
-                    true => r[6].as_string(),
-                    false => None,
-                };
-
-                let sid7 = match r.len() > 7 {
-                    true => r[7].as_string(),
-                    false => None,
-                };
-
-                let sid8 = match r.len() > 8 {
-                    true => r[8].as_string(),
-                    false => None,
-                };
+                let sid2 = match r.len() > 2 {true => r[2].as_string(), false => None,};
+                let sid3 = match r.len() > 3 {true => r[3].as_string(), false => None,};
+                let sid4 = match r.len() > 4 {true => r[4].as_string(), false => None,};
+                let sid5 = match r.len() > 5 {true => r[5].as_string(), false => None,};
+                let sid6 = match r.len() > 6 {true => r[6].as_string(), false => None,};
+                let sid7 = match r.len() > 7 {true => r[7].as_string(), false => None,};
+                let sid8 = match r.len() > 8 {true => r[8].as_string(), false => None,};
                        
                 data_vecs.add(XLContact {
                     trial_id: tid,

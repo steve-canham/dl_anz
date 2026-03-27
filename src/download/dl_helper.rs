@@ -1,5 +1,57 @@
 
+use calamine::{Data, DataType};
 
+
+pub fn get_as_string_option(d: Data) -> Option<String> {
+      
+    match d.as_string() {
+        Some(s) => Some(s.trim().replace("\u{0000}", "")),
+        //Some(s) => Some(s.trim().to_string()),
+        None => None,
+    }
+}
+
+pub fn get_datetime_as_string_option(d: Data) -> Option<String> {
+      
+    match d.as_datetime() {
+        Some(dt) => Some(dt.format("%Y-%m-%d").to_string()),
+        None => None,
+    }
+}
+
+pub fn get_date_as_string_option(d: Data) -> Option<String> {
+      
+    match d.as_date() {
+        Some(dt) => Some(dt.format("%Y-%m-%d").to_string()),
+        None => None,
+    }
+}
+
+
+pub fn get_string_option(row: &Vec<Data>, n: usize) -> Option<String> {
+      
+    if let Some(s) = row[n].clone().as_string() {
+        Some(s.trim().replace("\u{0000}", ""))
+    }
+    else {
+        None
+    }
+}
+
+pub fn get_string_option_checked(row: &Vec<Data>, n: usize) -> Option<String> {
+        
+    if row.len() > n {
+            if let Some(s) = row[n].clone().as_string() {
+            Some(s.trim().replace("\u{0000}", ""))
+        }
+        else {
+            None
+        }
+    }
+    else {
+        None
+    }
+}
 
 pub fn trim_sec_id (s: &str) -> String {
     let sid = s.trim_start_matches(&['-', '“']);

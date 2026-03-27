@@ -23,5 +23,5 @@ log = "0.4.29"
 log4rs = "1.4.0"
 toml = "0.9.8"
 regex = "1.12.3"
-calamine = "0.34.0"
+calamine = { version = "0.34.0", features = ["chrono"] }
 
